@@ -30,9 +30,8 @@ export const getCollectionList = async (
   client: Client,
   threadID: ThreadID
 ): Promise<any> => {
-  let collectionInfo
   try {
-    collectionInfo = await client.getCollectionInfo(threadID, ARK_COLLECTION)
+    await client.getCollectionInfo(threadID, ARK_COLLECTION)
   } catch (error) {
     return []
   }

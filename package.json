@@ -1,21 +1,31 @@
 {
-  "name": "extension",
+  "name": "chrome-react-extension-example",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@craco/craco": "^5.8.0",
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "@textile/hub": "^6.3.0",
+    "@types/jest": "^26.0.15",
+    "@types/node": "^12.0.0",
+    "@types/react": "^16.9.53",
+    "@types/react-dom": "^16.9.8",
     "grommet": "^2.17.5",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-scripts": "4.0.3",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "4.0.1",
     "styled-components": "^5.3.1",
     "turndown": "^7.1.1",
-    "typescript": "^4.4.2",
-    "web-vitals": "^1.0.1"
+    "typescript": "4.0.5",
+    "web-vitals": "^0.2.4"
   },
   "scripts": {
-    "start": "react-app-rewired start",
-    "build": "./script/build.sh",
-    "test": "react-app-rewired test",
+    "start": "react-scripts start",
+    "build": "INLINE_RUNTIME_CHUNK=false craco build && cp public/turndown.js build/static/js/turndown.js",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -37,14 +47,7 @@
     ]
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.11.4",
-    "@testing-library/react": "^11.1.0",
-    "@testing-library/user-event": "^12.1.10",
-    "@textile/hub": "^6.3.0",
-    "@types/jest": "^27.0.1",
-    "@types/node": "^16.7.6",
-    "@types/react": "^17.0.19",
-    "@types/react-dom": "^17.0.9",
-    "react-app-rewired": "^2.1.8"
+    "@types/chrome": "^0.0.126",
+    "@types/react-router-dom": "^5.1.6"
   }
 }

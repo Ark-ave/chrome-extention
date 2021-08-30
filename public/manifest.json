@@ -1,16 +1,29 @@
 {
-  "name": "方舟",
-  "description": "去中心化分类互联网内容",
+  "name": "Hello Extensions",
+  "description": "Base Level Extension",
   "version": "1.0",
-  "manifest_version": 3,
-  "homepage_url": "https://ark.chezhe.dev/",
-  "permissions": ["storage", "cookies"],
-  "host_permissions": ["*://*.douban.com/"],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": "logo512.png"
+  "manifest_version": 2,
+  "browser_action": {
+    "default_popup": "index.html",
+    "default_title": "Open the popup"
   },
   "icons": {
-    "512": "logo512.png"
-  }
+    "16": "logo192.png",
+    "48": "logo192.png",
+    "128": "logo192.png"
+  },
+  "background": {
+    "scripts": ["./static/js/background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.douban.com/*"],
+      "js": ["./static/js/turndown.js", "./static/js/content.js"],
+      "all_frames": false,
+      "run_at": "document_end"
+    }
+  ],
+  "permissions": ["activeTab"],
+  "optional_permissions": ["<all_urls>"]
 }
