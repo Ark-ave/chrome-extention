@@ -1,0 +1,10 @@
+.action-ark {
+  margin-left: 10px;
+  border: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #008cd5;
+  color: white;
+  outline: none;
+  cursor: pointer;
+}

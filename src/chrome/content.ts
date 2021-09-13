@@ -1,11 +1,31 @@
 import { ChromeMessage, Sender } from '../types'
 
-const BUTTON_LABEL = '收藏到[方舟]'
+enum BOOKMARK_TYPE {
+  DOUBAN_STATUS = 'douban.status',
+  DOUBAN_TOPIC = 'douban.topic',
+  DOUBAN_NOTE = 'douban.note',
+  DOUBAN_REVIEW = 'douban.review',
+  WEIBO = 'weibo',
+  WECHAT_ARTICLE = 'wechat.article',
+  TWITTER = 'twitter',
+}
+
+const turndownService = new window.TurndownService()
+turndownService.addRule('aViewLarge', {
+  filter: function (node: any, options: any) {
+    return node.nodeName === 'A' && /view-large/.test(node.className)
+  },
+  replacement: function () {
+    return ''
+  },
+})
+turndownService.remove(['script', 'style', 'aViewLarge'])
 
 declare global {
   interface Window {
     // add you custom properties and methods
     TurndownService: any
+    $: any
   }
   interface Element {
     dataset: any
@@ -27,40 +47,52 @@ const messagesFromReactAppListener = (
   response: MessageResponse
 ) => {
   const isValidated = validateSender(message, sender)
-
-  if (isValidated && message.message === 'Hello from React') {
-    console.log('### hahah')
-    response('Hello from content.js')
-  }
-
-  if (isValidated && message.message === 'delete logo') {
-    const logo = document.getElementById('hplogo')
-    logo?.parentElement?.removeChild(logo)
+  if (isValidated && message.message === 'getBookmark') {
+    getBookmark(response)
   }
 }
 
 const main = () => {
-  console.log('[content.ts] Main')
-  /**
-   * Fired when a message is sent from either an extension process or a content script.
-   */
   chrome.runtime.onMessage.addListener(messagesFromReactAppListener)
 }
 
-// main()
-const turndownService = new window.TurndownService()
-turndownService.remove(['script', 'style'])
-const href = window.location.href
+main()
 
-function formatDoubanStatusItem(statusItem: Element) {
+function getBookmark(response) {
+  const uri = window.location.href
+  if (/douban.com\/people\/\S*\/status\/\d/.test(uri)) {
+    const statusItem = document.getElementsByClassName('new-status')[0]
+    const bookmark = formatDoubanStatus(statusItem)
+    response(JSON.stringify(bookmark))
+  } else if (
+    /douban.com\/(note|review|(movie|book|music)\/review)\/\d/.test(uri)
+  ) {
+    const article = document.getElementsByClassName('article')[0]
+    const bookmark = formatDoubanNote(article)
+    response(JSON.stringify(bookmark))
+  } else if (/douban.com\/group\/topic\/\d/.test(uri)) {
+    const article = document.getElementsByClassName('article')[0]
+    const bookmark = formatDoubanTopic(article)
+    response(JSON.stringify(bookmark))
+  }
+}
+
+function formatDoubanStatus(ele: Element) {
+  if (!ele) {
+    return ''
+  }
+  const statusItem = ele.getElementsByClassName('status-item')[0]
+  if (!statusItem) {
+    return ''
+  }
+
   const hd = statusItem.getElementsByClassName('hd')
-
   const bd = statusItem.getElementsByClassName('bd')
   if (hd.length) {
     let _user = '',
       _pubtime = '',
       _quote = '',
-      _refer = ''
+      _refer: any = ''
     // rate for movie, music or book
     const blockquote = hd[0].getElementsByTagName('blockquote')
     const user = hd[0].getElementsByClassName('lnk-people')
@@ -99,51 +131,52 @@ function formatDoubanStatusItem(statusItem: Element) {
       }
     }
 
-    const uid = statusItem.dataset.uid
-    const sid = statusItem.dataset.sid
-    const origin = `https://www.douban.com/people/${uid}/status/${sid}/`
+    const reshare = ele.getElementsByClassName('status-real-wrapper')[0]
+    if (reshare) {
+      _refer = formatDoubanStatus(reshare)
+    }
+
+    const origin = window.location.href
 
     return {
       user: _user,
       pubtime: _pubtime,
-      quote: _quote,
+      title: _quote,
       refer: _refer,
       origin,
+      type: BOOKMARK_TYPE.DOUBAN_STATUS,
     }
   }
-}
-
-function addButton2DoubanStatus() {
-  const statuses = document.getElementsByClassName('new-status')
-  for (let index = 0; index < statuses.length; index++) {
-    const status = statuses[index]
-    const actions = status.getElementsByClassName('actions')
-
-    const button = document.createElement('button')
-    button.innerText = BUTTON_LABEL
-    button.className = 'action-ark'
-    // eslint-disable-next-line no-loop-func
-    button.addEventListener('click', (e) => {
-      e.preventDefault()
-      const statusItems = status.getElementsByClassName('status-item')
-      for (let itemIndex = 0; itemIndex < statusItems.length; itemIndex++) {
-        console.log(formatDoubanStatusItem(statusItems[itemIndex]))
-      }
-    })
-    actions[0].appendChild(button)
-  }
+  return {}
 }
 
 function formatDoubanNote(article: Element) {
-  const noteHeader = article.getElementsByClassName('note-header')
+  if (!article) {
+    return ''
+  }
+  const origin = window.location.href
+  const noteHeader = article.getElementsByClassName('note-header')[0]
+  const mainHd = article.getElementsByClassName('main-hd')[0]
 
-  const title = turndownService.turndown(
-    noteHeader[0].getElementsByTagName('h1')[0]
-  )
-  const user = turndownService.turndown(
-    noteHeader[0].getElementsByClassName('note-author')[0].outerHTML
-  )
+  let title = '',
+    user = '',
+    pubtime = ''
+  if (noteHeader) {
+    title = turndownService.turndown(noteHeader.getElementsByTagName('h1')[0])
+    user = turndownService.turndown(
+      noteHeader.getElementsByClassName('note-author')[0].outerHTML
+    )
 
+    const pubdate = noteHeader.getElementsByClassName('pub-date')[0]
+    if (pubdate) {
+      pubtime = pubdate.innerHTML
+    }
+  } else if (mainHd) {
+    user = turndownService.turndown(mainHd.firstElementChild)
+    const mainMeta = mainHd.getElementsByClassName('main-meta')[0]
+    pubtime = mainMeta?.innerHTML
+    title = turndownService.turndown(article.firstElementChild.innerHTML || '')
+  }
   const reportEle = document.getElementById('link-report_note')
   reportEle?.remove()
 
@@ -153,39 +186,24 @@ function formatDoubanNote(article: Element) {
   return {
     user,
     title,
-    note,
-    origin: href,
-  }
-}
-
-function addButton2DoubanNote() {
-  if (!/www.douban.com\/note\/\d/.test(href)) {
-    return
-  }
-
-  const articles = document.getElementsByClassName('article')
-  for (let index = 0; index < articles.length; index++) {
-    const article = articles[index]
-    const footerSharing = article.getElementsByClassName('footer-sharing')
-
-    const button = document.createElement('button')
-    button.innerText = BUTTON_LABEL
-    button.className = 'action-ark'
-    // eslint-disable-next-line no-loop-func
-    button.addEventListener('click', (e) => {
-      e.preventDefault()
-      const articleJSON = formatDoubanNote(article)
-      console.log(articleJSON)
-    })
-    footerSharing[0].appendChild(button)
+    content: note,
+    origin,
+    pubtime,
+    type: origin.includes('review')
+      ? BOOKMARK_TYPE.DOUBAN_REVIEW
+      : BOOKMARK_TYPE.DOUBAN_NOTE,
   }
 }
 
 function formatDoubanTopic(topic: Element) {
   const title = document.title
-
+  let pubtime = ''
   const topicDoc = topic.getElementsByClassName('topic-doc')[0]
   const from = topicDoc.getElementsByClassName('from')[0]
+  const createTime = topic.getElementsByClassName('create-time')[0]
+  if (createTime) {
+    pubtime = createTime.innerHTML
+  }
 
   const user = turndownService.turndown(
     from.getElementsByTagName('a')[0].outerHTML
@@ -194,41 +212,22 @@ function formatDoubanTopic(topic: Element) {
   return {
     user,
     title,
-    note,
-    origin: href,
+    content: note,
+    pubtime,
+    origin: window.location.href,
+    type: BOOKMARK_TYPE.DOUBAN_TOPIC,
   }
 }
 
-function addButton2DoubanTopic() {
-  if (!/douban.com\/group\/topic\/\d/.test(href)) {
-    return
-  }
-
-  const topics = document.getElementsByClassName('article')
-  for (let index = 0; index < topics.length; index++) {
-    const topic = topics[index]
-    const snsBar = topic.getElementsByClassName('sns-bar')
-    const button = document.createElement('button')
-    button.innerText = BUTTON_LABEL
-    button.className = 'action-ark'
-    // eslint-disable-next-line no-loop-func
-    button.addEventListener('click', (e) => {
-      e.preventDefault()
-      const topicJSON = formatDoubanTopic(topic)
-      console.log(topicJSON)
-    })
-    console.log(snsBar)
-    console.log(topic)
-    snsBar[0].appendChild(button)
-  }
-}
-
-function initButtons() {
-  addButton2DoubanStatus()
-
-  addButton2DoubanNote()
-
-  addButton2DoubanTopic()
-}
-
-initButtons()
+// function formatWechat() {
+//   const jsContent = document.getElementById('js_content')
+//   const content = turndownService.turndown(jsContent || '')
+//   const name = document.getElementById('js_name')
+//   const user = turndownService.turndown(name || '')
+//   return {
+//     user,
+//     title: document.title,
+//     content,
+//     origin: href,
+//   }
+// }

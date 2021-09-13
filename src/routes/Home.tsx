@@ -1,107 +1,138 @@
 import React, { useEffect, useState } from 'react'
 import { useHistory } from 'react-router-dom'
-import { Box, Grommet, grommet, Button, Select } from 'grommet'
+import { Box, Grommet, grommet, Button, Select, Spinner, Text } from 'grommet'
 import { ChromeMessage, Sender } from '../types'
-import { getCurrentTabUId, getCurrentTabUrl } from '../chrome/utils'
-// import { getCollectionList, useClient, getThreadID } from '../textile'
+import { getCurrentTabUId } from '../chrome/utils'
+import Singleton from '../textile/instance'
+import { ArkBookmark, ArkFolder } from '../textile/types'
+import Bookmark from '../components/Bookmark'
 
 export const Home = () => {
-  const [value, setValue] = useState('')
+  const [value, setValue] = useState<ArkFolder>()
   const [options, setOptions] = useState([])
-  //   const { client } = useClient()
-
-  const [url, setUrl] = useState<string>('')
-  const [responseFromContent, setResponseFromContent] = useState<string>('')
+  const [disabled, setDisabled] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [bookmark, setBookmark] = useState<ArkBookmark>()
+  const [errorMessage, setErrorMessage] = useState('')
 
   let { push } = useHistory()
 
-  /**
-   * Get current URL
-   */
   useEffect(() => {
-    getCurrentTabUrl((url) => {
-      setUrl(url || 'undefined')
-    })
-  }, [])
-
-  //   useEffect(() => {
-  //     if (client) {
-  //       getCollectionList(
-  //         client,
-  //         getThreadID('bafk6f3cgxihfmxkvzfgqualsfhm5t26dbvn2du2loxu5o5z63lt7hiy')
-  //       )
-  //         .then((list) => {
-  //           setOptions(list)
-  //           if (list.length) {
-  //             setValue(list[0])
-  //           }
-  //         })
-  //         .catch(console.log)
-  //     }
-  //   }, [client])
-
-  const sendTestMessage = () => {
-    const message: ChromeMessage = {
-      from: Sender.React,
-      message: 'Hello from React',
-    }
-
-    getCurrentTabUId((id) => {
-      id &&
-        chrome.tabs.sendMessage(id, message, (responseFromContentScript) => {
-          setResponseFromContent(responseFromContentScript)
+    const instance = Singleton.getInstance()
+    function fetchFolders() {
+      instance
+        .queryMyFolders()
+        .then((result: ArkFolder[]) => {
+          setDisabled(false)
+          setOptions(result)
         })
-    })
-  }
-
-  const sendRemoveMessage = () => {
-    const message: ChromeMessage = {
-      from: Sender.React,
-      message: 'delete logo',
+        .catch(console.log)
     }
-
-    getCurrentTabUId((id) => {
-      id &&
-        chrome.tabs.sendMessage(id, message, (response) => {
-          setResponseFromContent(response)
-        })
-    })
-  }
+    if (instance.getIdentity()) {
+      if (!instance.getClient()) {
+        setTimeout(() => {
+          fetchFolders()
+        }, 1000)
+      } else {
+        fetchFolders()
+      }
+    } else {
+      push('/login')
+    }
+  }, [push])
 
   return (
     <Grommet theme={grommet} full>
       <Box
-        style={{ width: 300, height: 200, border: '1px solid #e3e3e3' }}
+        style={{ width: 400, height: 400, border: '1px solid #e3e3e3' }}
         pad="medium"
         gap="medium"
       >
-        <Select
-          options={options}
-          labelKey="title"
-          valueKey="_id"
-          value={[value]}
-          onChange={({ option }) => setValue(option)}
-        />
-        <Button primary label="保存" />
+        {bookmark && <Bookmark feed={bookmark} />}
+
+        <Box
+          style={{
+            position: 'fixed',
+            left: 0,
+            bottom: 0,
+            width: '100%',
+            padding: 10,
+            background: '#fff6ed',
+          }}
+        >
+          <Select
+            options={options}
+            labelKey="title"
+            valueKey="_id"
+            value={[value]}
+            onChange={({ option }) => setValue(option)}
+          />
+          <Text color="red">{errorMessage}</Text>
+          <Box
+            direction="row"
+            align="center"
+            justify="around"
+            style={{ marginTop: 10 }}
+          >
+            <Button
+              label="解析"
+              disabled={disabled}
+              style={{ width: 130 }}
+              icon={isLoading ? <Spinner /> : null}
+              onClick={() => {
+                const message: ChromeMessage = {
+                  from: Sender.React,
+                  message: 'getBookmark',
+                }
+                setIsLoading(true)
+                getCurrentTabUId((id) => {
+                  if (id) {
+                    chrome.tabs.sendMessage(id, message, (response) => {
+                      setIsLoading(false)
+                      try {
+                        const result = JSON.parse(response)
+                        console.log('###', result)
+                        if (typeof result === 'object' && result.origin) {
+                          setBookmark(result)
+                        }
+                      } catch (error) {
+                        setErrorMessage(error.message)
+                      }
+                    })
+                  }
+                })
+              }}
+            />
+            <Button
+              primary
+              disabled={!bookmark || isSaving}
+              label="保存"
+              style={{ width: 130 }}
+              onClick={async () => {
+                try {
+                  const instance = Singleton.getInstance()
+                  const _bm = { ...bookmark }
+                  if (value) {
+                    _bm.collectionId = value._id
+                  }
+                  _bm.createdAt = Date.now()
+                  if (typeof _bm.refer === 'object') {
+                    _bm.refer = JSON.stringify(_bm.refer)
+                  }
+                  await instance.createBookmarks([_bm])
+                  window.close()
+                } catch (error) {
+                  setErrorMessage(error.message)
+                }
+              }}
+            />
+          </Box>
+          <Text textAlign="center" style={{ marginTop: 6 }}>
+            暂时只支持豆瓣广播、日记、小组和长评
+          </Text>
+        </Box>
       </Box>
     </Grommet>
-    // <div className="App">
-    //   <header className="App-header">
-    //     <p>Home</p>
-    //     <p>URL:</p>
-    //     <p>{url}</p>
-    //     <button onClick={sendTestMessage}>SEND MESSAGE</button>
-    //     <button onClick={sendRemoveMessage}>Remove logo</button>
-    //     <p>Response from content:</p>
-    //     <p>{responseFromContent}</p>
-    //     <button
-    //       onClick={() => {
-    //         push('/about')
-    //       }}
-    //     >
-    //       About page
-    //     </button>
-    //   </header>
-    // </div>
   )
 }
