@@ -111,6 +111,7 @@ export const Home = () => {
               style={{ width: 130 }}
               onClick={async () => {
                 try {
+                  setIsSaving(true)
                   const instance = Singleton.getInstance()
                   const _bm = { ...bookmark }
                   if (value) {
@@ -121,8 +122,10 @@ export const Home = () => {
                     _bm.refer = JSON.stringify(_bm.refer)
                   }
                   await instance.createBookmarks([_bm])
+                  setIsSaving(false)
                   window.close()
                 } catch (error) {
+                  setIsSaving(false)
                   setErrorMessage(error.message)
                 }
               }}

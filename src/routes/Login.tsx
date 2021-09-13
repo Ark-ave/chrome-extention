@@ -32,6 +32,12 @@ export const Login = () => {
             push('/')
           }}
         />
+
+        <Button
+          style={{ textAlign: 'center' }}
+          label="注册"
+          href="https://ark.chezhe.dev/landing"
+        />
       </Box>
     </Grommet>
   )
