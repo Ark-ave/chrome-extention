@@ -36,7 +36,8 @@ export const Login = () => {
         <Button
           style={{ textAlign: 'center' }}
           label="注册"
-          href="https://ark.chezhe.dev/landing"
+          href="https://ark.chezhe.dev/signup"
+          target="_blank"
         />
       </Box>
     </Grommet>
