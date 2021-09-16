@@ -116,6 +116,8 @@ export const Home = () => {
                   const _bm = { ...bookmark }
                   if (value) {
                     _bm.collectionId = value._id
+                  } else {
+                    _bm.collectionId = ''
                   }
                   _bm.createdAt = Date.now()
                   if (typeof _bm.refer === 'object') {
