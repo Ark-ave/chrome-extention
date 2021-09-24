@@ -10,7 +10,7 @@ export const Login = () => {
     <Grommet theme={grommet} full>
       <script src="/static/js/turndown.js"></script>
       <Box
-        style={{ width: 400, height: 400, border: '1px solid #e3e3e3' }}
+        style={{ width: 400, height: 500, border: '1px solid #e3e3e3' }}
         pad="medium"
         gap="medium"
       >
