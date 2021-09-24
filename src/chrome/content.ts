@@ -82,7 +82,7 @@ function formatDoubanStatus(ele: Element) {
     return ''
   }
   const statusItem = ele.getElementsByClassName('status-item')[0]
-  if (!statusItem) {
+  if (!statusItem || statusItem.classList.contains('deleted')) {
     return ''
   }
 

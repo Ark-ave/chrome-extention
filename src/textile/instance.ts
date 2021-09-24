@@ -1,6 +1,7 @@
 import { PrivateKey, Identity, Client, ThreadID, UserAuth } from '@textile/hub'
 import axios from 'axios'
 import { ArkBookmark, ArkFolder } from './types'
+import { ArkBookmarkSchema, ArkFolderSchema } from './schemas'
 
 const ARK_COLLECTION = 'ARKCOLLECTION'
 const ARK_BOOKMARK = 'ARKBOOKMARK'
@@ -84,7 +85,28 @@ class Singleton {
 
     await this.client.getToken(id)
 
+    const name = id.public.toString()
+    try {
+      await this.client.getThread(name)
+    } catch (error) {
+      await this.createDB(name)
+    }
+
     return this.client
+  }
+
+  public async createDB(name: string) {
+    const threadId = await this.client.newDB(undefined, name)
+    await this.client.newCollection(threadId, {
+      name: ARK_COLLECTION,
+      schema: ArkFolderSchema,
+    })
+    await this.client.newCollection(threadId, {
+      name: ARK_BOOKMARK,
+      schema: ArkBookmarkSchema,
+    })
+    this.threadNameIdDic[name] = threadId
+    return threadId
   }
 
   public async getCredentials(): Promise<UserAuth> {

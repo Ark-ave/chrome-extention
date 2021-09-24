@@ -6,6 +6,8 @@ import { getCurrentTabUId } from '../chrome/utils'
 import Singleton from '../textile/instance'
 import { ArkBookmark, ArkFolder } from '../textile/types'
 import Bookmark from '../components/Bookmark'
+import LZString from 'lz-string'
+import DoneModal from '../components/DoneModal'
 
 export const Home = () => {
   const [value, setValue] = useState<ArkFolder>()
@@ -15,6 +17,7 @@ export const Home = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [bookmark, setBookmark] = useState<ArkBookmark>()
   const [errorMessage, setErrorMessage] = useState('')
+  const [isDoneModalVisible, setIsDoneModalVisible] = useState(false)
 
   let { push } = useHistory()
 
@@ -45,7 +48,7 @@ export const Home = () => {
   return (
     <Grommet theme={grommet} full>
       <Box
-        style={{ width: 400, height: 400, border: '1px solid #e3e3e3' }}
+        style={{ width: 400, height: 500, border: '1px solid #e3e3e3' }}
         pad="medium"
         gap="medium"
       >
@@ -86,13 +89,13 @@ export const Home = () => {
                   message: 'getBookmark',
                 }
                 setIsLoading(true)
+                setErrorMessage('')
                 getCurrentTabUId((id) => {
                   if (id) {
                     chrome.tabs.sendMessage(id, message, (response) => {
                       setIsLoading(false)
                       try {
                         const result = JSON.parse(response)
-                        console.log('###', result)
                         if (typeof result === 'object' && result.origin) {
                           setBookmark(result)
                         }
@@ -119,13 +122,16 @@ export const Home = () => {
                   } else {
                     _bm.collectionId = ''
                   }
+                  if (_bm.content) {
+                    _bm.content = `lz:${LZString.compress(_bm.content)}`
+                  }
                   _bm.createdAt = Date.now()
                   if (typeof _bm.refer === 'object') {
                     _bm.refer = JSON.stringify(_bm.refer)
                   }
                   await instance.createBookmarks([_bm])
                   setIsSaving(false)
-                  window.close()
+                  setIsDoneModalVisible(true)
                 } catch (error) {
                   setIsSaving(false)
                   setErrorMessage(error.message)
@@ -138,6 +144,7 @@ export const Home = () => {
           </Text>
         </Box>
       </Box>
+      {isDoneModalVisible && <DoneModal />}
     </Grommet>
   )
 }
