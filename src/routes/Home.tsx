@@ -122,7 +122,7 @@ export const Home = () => {
                   } else {
                     _bm.collectionId = ''
                   }
-                  if (_bm.content) {
+                  if (_bm.content && _bm.content.length > 8000) {
                     _bm.content = `lz:${LZString.compress(_bm.content)}`
                   }
                   _bm.createdAt = Date.now()

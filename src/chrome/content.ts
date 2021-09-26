@@ -19,7 +19,15 @@ turndownService.addRule('aViewLarge', {
     return ''
   },
 })
-turndownService.remove(['script', 'style', 'aViewLarge'])
+turndownService.addRule('imageDataSrc', {
+  filter: function (node, options) {
+    return node.nodeName === 'IMG' && node.dataset && node.dataset.src
+  },
+  replacement: function (content, node, options) {
+    return '![' + node.alt + '](' + node.dataset.src + ')'
+  },
+})
+turndownService.remove(['script', 'style', 'aViewLarge', 'imageDataSrc'])
 
 declare global {
   interface Window {
@@ -74,6 +82,56 @@ function getBookmark(response) {
     const article = document.getElementsByClassName('article')[0]
     const bookmark = formatDoubanTopic(article)
     response(JSON.stringify(bookmark))
+  } else if (/douban.com\/photos\/photo\/\d/.test(uri)) {
+    const content = document.getElementById('content')
+    const bookmark = formatDoubanPhoto(content)
+    response(JSON.stringify(bookmark))
+  } else if (/mp.weixin.qq.com\/s/.test(uri)) {
+    const bookmark = formatWechatArticle()
+    response(JSON.stringify(bookmark))
+  }
+}
+
+function formatWechatArticle() {
+  const jsContent = document.getElementById('js_content')
+  const content = turndownService.turndown(jsContent || '')
+  const name = document.getElementById('js_name')
+  const user = turndownService.turndown(name || '')
+  const pubtime = document.getElementById('publish_time').innerText
+  const title = document.getElementById('activity-name').innerText
+
+  return {
+    user,
+    pubtime,
+    title,
+    content,
+    origin: window.location.href,
+    type: 'wechat.article',
+  }
+}
+
+function formatDoubanPhoto(ele: Element) {
+  const imageShow = ele.getElementsByClassName('image-show')[0]
+  const photoShow = ele.getElementsByClassName('photo-show')[0]
+  let title = ''
+  if (imageShow) {
+    title = turndownService.turndown(imageShow)
+  } else if (photoShow) {
+    title = turndownService.turndown(photoShow)
+  }
+
+  const posterInfo = ele.getElementsByClassName('poster-info')[0]
+  if (posterInfo) {
+    title = turndownService.turndown(posterInfo) + title
+  }
+
+  return {
+    user: '',
+    pubtime: '',
+    title,
+    refer: '',
+    origin,
+    type: BOOKMARK_TYPE.DOUBAN_STATUS,
   }
 }
 
